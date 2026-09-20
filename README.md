@@ -1,6 +1,3 @@
-Sure — here’s a concise **current-state README** for Voxara:
-
-```markdown
 # Voxara
 
 Voxara is an AI-powered work assistant that turns natural-language conversations into actionable workflows.
