@@ -77,11 +77,15 @@ const handler = createMcpHandler(() => {
 
                 const result = await pool.query(
                     `SELECT *
-                 FROM tasks
-                 WHERE user_id = $1
-                 AND title ILIKE $2
-                 ORDER BY created_at DESC`,
-                    [userId, `%${query}%`]
+   FROM tasks
+   WHERE user_id = $1
+   AND (
+     title ILIKE '%' || $2 || '%'
+     OR to_tsvector('simple', title)
+        @@ plainto_tsquery('simple', $2)
+   )
+   ORDER BY created_at DESC`,
+                    [userId, query]
                 );
 
                 return {
