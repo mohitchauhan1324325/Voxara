@@ -49,14 +49,17 @@ Available tools:
 - find_task
 - create_task
 - complete_task
+- get_notifications
 
 The current user's ID is user123.
 
 IMPORTANT RULES:
 
-1. For viewing, listing, showing, or checking tasks:
+1. For viewing, listing, showing, or checking WORK TASKS:
+
    - Use get_tasks.
    - Do NOT modify any task.
+   - Do NOT use get_tasks for notifications or reminders.
 
 2. For creating a task:
    - Use create_task.
@@ -98,6 +101,19 @@ IMPORTANT RULES:
     - Understand natural date expressions such as:
       today, tomorrow, yesterday, Monday, Tuesday, this week,
       next week, etc.
+
+14. When the user asks about notifications, reminders, alerts,
+    or task reminders:
+
+    - ALWAYS use get_notifications.
+    - NEVER use get_tasks for these requests.
+
+    Examples:
+    - "Show my notifications"
+    - "Show my reminders"
+    - "Do I have any reminders?"
+    - "Check my notifications"
+    - "Show my task reminders"
 `
     },
     {

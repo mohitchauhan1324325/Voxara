@@ -2,6 +2,7 @@ import { createMcpHandler, McpServer } from "@modelcontextprotocol/server";
 import { toNodeHandler } from "@modelcontextprotocol/node";
 import { createServer } from "node:http";
 import * as z from "zod/v4";
+import { checkReminders } from "./reminder.js";
 import pool from "./db.js";
 
 const handler = createMcpHandler(() => {
@@ -51,6 +52,70 @@ const handler = createMcpHandler(() => {
                             type: "text",
                             text: JSON.stringify({
                                 error: "Failed to fetch tasks"
+                            })
+                        }
+                    ]
+                };
+            }
+        }
+    );
+
+    server.registerTool(
+        "get_notifications",
+        {
+            description:
+                "Get the user's unread task reminders and notifications",
+            inputSchema: z.object({
+                userId: z.string()
+            })
+        },
+
+        async ({ userId }) => {
+            try {
+                const result = await pool.query(
+                    `
+        SELECT
+          n.id,
+          n.task_id,
+          n.message,
+          n.type,
+          n.is_read,
+          n.created_at,
+          t.title,
+          t.due_date
+        FROM notifications n
+        LEFT JOIN tasks t
+          ON n.task_id = t.id
+        WHERE n.user_id = $1
+        AND n.is_read = false
+        ORDER BY n.created_at DESC
+        `,
+                    [userId]
+                );
+
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: JSON.stringify({
+                                notifications: result.rows
+                            })
+                        }
+                    ]
+                };
+
+            } catch (error) {
+                console.error(
+                    "Notification fetch error:",
+                    error
+                );
+
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: JSON.stringify({
+                                error: "Failed to fetch notifications"
                             })
                         }
                     ]
@@ -248,4 +313,10 @@ const httpServer = createServer((req, res) => {
 httpServer.listen(3000, () => {
     console.log("StudyFlow MCP server running");
     console.log("MCP endpoint: http://localhost:3000/mcp");
+
+    // Check reminders immediately
+    checkReminders();
+
+    // Check every 1 minute
+    setInterval(checkReminders, 60 * 1000);
 });
