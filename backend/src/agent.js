@@ -44,68 +44,60 @@ You are Voxara, an AI work assistant.
 
 You help users manage their work tasks.
 
-Available operations:
-- Get current tasks
-- Create new tasks
-- Complete tasks
-
-Always use the appropriate MCP tool when the user's request requires
-interacting with their tasks.
+Available tools:
+- get_tasks
+- find_task
+- create_task
+- complete_task
 
 The current user's ID is user123.
 
 IMPORTANT RULES:
 
-1. When the user asks to view, show, list, check, or get tasks,
-   use get_tasks.
+1. For viewing, listing, showing, or checking tasks:
+   - Use get_tasks.
+   - Do NOT modify any task.
 
-2. When the user asks to create a task, use create_task.
+2. For creating a task:
+   - Use create_task.
 
-3. Only use complete_task when the user explicitly asks to:
-   - complete a task
-   - mark a task as completed
-   - finish a task
-   - mark a task as done
+3. For completing a task:
+   - If the user gives a numeric task ID, use complete_task directly.
+   - If the user gives a task name, title, or description:
+     - Use find_task.
+     - If exactly one task is found, you MUST call complete_task
+       using that task's ID.
+     - If multiple tasks are found, ask the user which task they mean.
+     - If no task is found, tell the user the task could not be found.
 
-4. If the user refers to a task by its name, title, or description
-   instead of its numeric ID:
+4. A successful find_task is NOT the final answer when the user
+   asked to complete a task.
+   You MUST call complete_task after finding exactly one matching task.
 
-   - Use the find_task tool to find the matching task.
-   - If exactly one task matches, use complete_task with that task's ID.
-   - If multiple tasks match, ask the user which task they mean.
-   - If no task matches, tell the user that the task could not be found.
+5. Never call complete_task when the user only wants to view tasks.
 
-5. Always include userId: "user123" when calling an MCP tool.
+6. Always use userId: "user123".
 
-6. Never invent task information.
+7. Never invent task information.
 
-7. Never return JSON to the user.
+8. Keep responses concise and natural.
 
-8. Never use Markdown tables.
+9. Do not return JSON.
 
-9. Keep responses natural.
+10. Do not use Markdown tables.
 
-For task lists, use simple readable text.
+11. When the user asks for pending tasks, the final response
+    should mention only pending tasks.
 
-Example:
+12. When the user asks for completed tasks, the final response
+    should mention only completed tasks.
 
-Here are your pending tasks:
-
-1. Review pull request
-   Priority: High
-   Status: Pending
-
-2. Update API documentation
-   Priority: Medium
-   Status: Pending
-
-For task creation:
-
-Task created successfully: Review pull request.
-
-For task completion:
-
-Done. Review pull request has been marked as completed.
+13. When the user asks for tasks based on a date or day:
+    - Use get_tasks.
+    - Filter tasks according to their due_date.
+    - Understand natural date expressions such as:
+      today, tomorrow, yesterday, Monday, Tuesday, this week,
+      next week, etc.
 `
     },
     {
@@ -114,121 +106,212 @@ Done. Review pull request has been marked as completed.
     }
   ];
 
-  // First AI call - decide which MCP tool to use
-  const response = await groq.chat.completions.create({
-    model: "openai/gpt-oss-20b",
-    messages,
-    tools,
-    tool_choice: "auto",
-    parallel_tool_calls: false
-  });
-
-  const assistantMessage = response.choices[0].message;
-
-  // No tool required
-  if (!assistantMessage.tool_calls) {
-    return {
-      response: assistantMessage.content,
-      tasks: null
-    };
-  }
-
-  messages.push(assistantMessage);
-
   let taskData = null;
-  let lastToolResult = null;
 
-  // Execute MCP tool
-  for (const toolCall of assistantMessage.tool_calls) {
+  // Allow multiple rounds of tool calling
+  for (let round = 0; round < 5; round++) {
 
-    const toolName = toolCall.function.name;
-
-    const toolArguments = JSON.parse(
-      toolCall.function.arguments
-    );
-
-    // Make sure userId is always present
-    if (!toolArguments.userId) {
-      toolArguments.userId = "user123";
-    }
-
-    console.log(`Calling MCP tool: ${toolName}`);
-    console.log("Arguments:", toolArguments);
-
-    const toolResult = await mcpClient.callTool({
-      name: toolName,
-      arguments: toolArguments
+    const response = await groq.chat.completions.create({
+      model: "openai/gpt-oss-20b",
+      messages,
+      tools,
+      tool_choice: "auto",
+      parallel_tool_calls: false
     });
 
-    lastToolResult = toolResult;
+    const assistantMessage = response.choices[0].message;
 
-    // Save task data for frontend
-    if (toolName === "get_tasks") {
+    // AI finished
+    if (!assistantMessage.tool_calls?.length) {
+      return {
+        response: assistantMessage.content || "Done.",
+        tasks: taskData
+      };
+    }
+
+    // Add AI tool request
+    messages.push(assistantMessage);
+
+    // Execute tools
+    for (const toolCall of assistantMessage.tool_calls) {
+
+      const toolName = toolCall.function.name;
+
+      const toolArguments = JSON.parse(
+        toolCall.function.arguments || "{}"
+      );
+
+      // Always provide userId
+      if (!toolArguments.userId) {
+        toolArguments.userId = "user123";
+      }
+
+      console.log(`Calling MCP tool: ${toolName}`);
+      console.log("Arguments:", toolArguments);
+
+      const toolResult = await mcpClient.callTool({
+        name: toolName,
+        arguments: toolArguments
+      });
+
+      console.log("MCP result:", toolResult);
+
+      // Save task data for frontend
       try {
         const parsedResult = JSON.parse(
           toolResult.content[0].text
         );
 
-        taskData = parsedResult.tasks || [];
+        if (toolName === "get_tasks") {
+
+          const allTasks = parsedResult.tasks || [];
+
+          const lowerMessage = userMessage.toLowerCase();
+
+          // Start with all tasks
+          taskData = allTasks;
+
+          // -------------------------
+          // STATUS FILTER
+          // -------------------------
+
+          if (
+            lowerMessage.includes("pending") ||
+            lowerMessage.includes("incomplete")
+          ) {
+            taskData = taskData.filter(
+              (task) => task.status === "pending"
+            );
+          }
+
+          else if (
+            lowerMessage.includes("completed") ||
+            lowerMessage.includes("complete")
+          ) {
+            taskData = taskData.filter(
+              (task) => task.status === "completed"
+            );
+          }
+
+
+          // -------------------------
+          // PRIORITY FILTER
+          // -------------------------
+
+          if (lowerMessage.includes("high priority")) {
+
+            taskData = taskData.filter(
+              (task) => task.priority === "high"
+            );
+
+          }
+
+          else if (lowerMessage.includes("medium priority")) {
+
+            taskData = taskData.filter(
+              (task) => task.priority === "medium"
+            );
+
+          }
+
+          else if (lowerMessage.includes("low priority")) {
+
+            taskData = taskData.filter(
+              (task) => task.priority === "low"
+            );
+
+          }
+
+
+          // -------------------------
+          // DATE FILTER
+          // -------------------------
+
+          const today = new Date();
+
+          // Convert date to YYYY-MM-DD
+          const formatDate = (date) => {
+            return date.toISOString().split("T")[0];
+          };
+
+
+          // Today
+          if (lowerMessage.includes("today")) {
+
+            const todayDate = formatDate(today);
+
+            taskData = taskData.filter(
+              (task) => task.due_date === todayDate
+            );
+          }
+
+
+          // Tomorrow
+          else if (lowerMessage.includes("tomorrow")) {
+
+            const tomorrow = new Date(today);
+
+            tomorrow.setDate(
+              tomorrow.getDate() + 1
+            );
+
+            const tomorrowDate = formatDate(tomorrow);
+
+            taskData = taskData.filter(
+              (task) => task.due_date === tomorrowDate
+            );
+          }
+
+
+          // Yesterday
+          else if (lowerMessage.includes("yesterday")) {
+
+            const yesterday = new Date(today);
+
+            yesterday.setDate(
+              yesterday.getDate() - 1
+            );
+
+            const yesterdayDate = formatDate(yesterday);
+
+            taskData = taskData.filter(
+              (task) => task.due_date === yesterdayDate
+            );
+          }
+
+
+          // Overdue
+          else if (lowerMessage.includes("overdue")) {
+
+            const todayDate = formatDate(today);
+
+            taskData = taskData.filter(
+              (task) =>
+                task.due_date &&
+                task.due_date < todayDate &&
+                task.status === "pending"
+            );
+          }
+        }
 
       } catch (error) {
         console.error(
-          "Failed to parse task data:",
+          "Failed to parse MCP result:",
           error
         );
       }
-    }
 
-    messages.push({
-      role: "tool",
-      tool_call_id: toolCall.id,
-      content: JSON.stringify(toolResult)
-    });
-  }
-
-  /*
-    Generate the final response WITHOUT sending
-    the previous tool conversation back to Groq.
-
-    This prevents the model from trying to call
-    complete_task again.
-  */
-
-  let finalResponse;
-
-  if (lastToolResult) {
-    try {
-      const result = JSON.parse(
-        lastToolResult.content[0].text
-      );
-
-      if (result.message) {
-        finalResponse = result.message;
-
-        if (result.task) {
-          if (result.task.title) {
-            finalResponse =
-              `${result.message}: ${result.task.title}`;
-          }
-        }
-      } else if (taskData) {
-        finalResponse = "Here are your tasks:";
-      } else {
-        finalResponse = "Done.";
-      }
-
-    } catch (error) {
-      console.error(
-        "Failed to parse MCP response:",
-        error
-      );
-
-      finalResponse = "Done.";
+      // Send tool result back to AI
+      messages.push({
+        role: "tool",
+        tool_call_id: toolCall.id,
+        content: JSON.stringify(toolResult)
+      });
     }
   }
 
   return {
-    response: finalResponse,
+    response: "I couldn't complete that request.",
     tasks: taskData
   };
 }
