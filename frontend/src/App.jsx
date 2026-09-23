@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function App() {
   const [message, setMessage] = useState("");
@@ -8,6 +8,9 @@ function App() {
   const [speaking, setSpeaking] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
+
+  const previousNotificationIds = useRef(new Set());
+  const notificationsInitialized = useRef(false);
 
   const startListening = () => {
     const SpeechRecognition =
@@ -84,9 +87,33 @@ function App() {
 
       const data = await res.json();
 
-      if (res.ok) {
-        setNotifications(data.notifications || []);
+      if (!res.ok) {
+        return;
       }
+
+      const currentNotifications = data.notifications || [];
+
+      const newNotifications = currentNotifications.filter(
+        (notification) =>
+          !previousNotificationIds.current.has(notification.id)
+      );
+
+      if (notificationsInitialized.current) {
+        newNotifications.forEach((notification) => {
+          speakResponse(
+            `You have a reminder. ${notification.message}`
+          );
+        });
+      }
+
+      previousNotificationIds.current = new Set(
+        currentNotifications.map((notification) => notification.id)
+      );
+
+      notificationsInitialized.current = true;
+
+      setNotifications(currentNotifications);
+
     } catch (error) {
       console.error("Notification fetch error:", error);
     }
@@ -102,6 +129,22 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
+  const markNotificationRead = async (id) => {
+    try {
+      await fetch(
+        `http://127.0.0.1:4000/api/notifications/${id}/read`,
+        {
+          method: "PATCH",
+        }
+      );
+
+      setNotifications((prev) =>
+        prev.filter((notification) => notification.id !== id)
+      );
+    } catch (error) {
+      console.error("Mark notification read error:", error);
+    }
+  };
 
   const renderMessage = (content) => {
     const lines = content
@@ -274,8 +317,6 @@ function App() {
       ]);
 
       speakResponse(data.response);
-
-      speakResponse(data.response);
     } catch (error) {
       console.error(error);
 
@@ -358,6 +399,7 @@ function App() {
                     notifications.map((notification) => (
                       <div
                         key={notification.id}
+                        onClick={() => markNotificationRead(notification.id)}
                         className="px-4 py-4 border-b border-slate-800 hover:bg-slate-800/50"
                       >
                         <div className="flex gap-3">

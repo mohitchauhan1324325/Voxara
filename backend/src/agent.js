@@ -39,6 +39,7 @@ export async function processMessage(userMessage) {
 
   let taskData = null;
   let notificationData = null;
+const currentDateTime = new Date().toISOString();
 
   const messages = [
     {
@@ -57,6 +58,11 @@ Available tools:
 
 The current user's ID is user123.
 
+Current date and time: ${currentDateTime}
+
+Use this date and time when interpreting relative dates such as:
+today, tomorrow, yesterday, next week, etc.
+
 IMPORTANT RULES:
 
 1. For viewing, listing, showing, or checking WORK TASKS:
@@ -66,9 +72,18 @@ IMPORTANT RULES:
    - Do NOT use get_tasks for notifications or reminders.
 
 2. For creating a task:
+
    - Use create_task.
 
-3. For completing a task:
+3. For creating tasks with a due date or reminder time:
+
+   - If the user provides a date or time, use create_task.
+   - Pass the date/time in the dueDate field.
+   - Convert natural language date/time into an ISO datetime string.
+   - If no date or time is provided, use dueDate: null.
+
+4. For completing a task:
+
    - If the user gives a numeric task ID, use complete_task directly.
    - If the user gives a task name, title, or description:
      - Use find_task.
@@ -76,10 +91,6 @@ IMPORTANT RULES:
        using that task's ID.
      - If multiple tasks are found, ask the user which task they mean.
      - If no task is found, tell the user the task could not be found.
-
-4. A successful find_task is NOT the final answer when the user
-   asked to complete a task.
-   You MUST call complete_task after finding exactly one matching task.
 
 5. Never call complete_task when the user only wants to view tasks.
 

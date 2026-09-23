@@ -67,6 +67,30 @@ app.get("/api/notifications", async (req, res) => {
   }
 });
 
+app.patch("/api/notifications/:id/read", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await pool.query(
+      `
+      UPDATE notifications
+      SET is_read = true
+      WHERE id = $1
+      AND user_id = $2
+      `,
+      [id, "user123"]
+    );
+
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error("Mark notification read error:", error);
+
+    res.status(500).json({
+      error: "Failed to mark notification as read"
+    });
+  }
+});
 
 app.listen(4000, () => {
   console.log("Voxara API running on http://localhost:4000");
