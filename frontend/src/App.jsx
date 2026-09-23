@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 function App() {
   const [message, setMessage] = useState("");
@@ -75,6 +75,33 @@ function App() {
 
     window.speechSynthesis.speak(utterance);
   };
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch(
+        "http://127.0.0.1:4000/api/notifications"
+      );
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setNotifications(data.notifications || []);
+      }
+    } catch (error) {
+      console.error("Notification fetch error:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+
+    const interval = setInterval(() => {
+      fetchNotifications();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
 
   const renderMessage = (content) => {
     const lines = content
