@@ -6,6 +6,8 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [listening, setListening] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([]);
 
   const startListening = () => {
     const SpeechRecognition =
@@ -233,6 +235,7 @@ function App() {
         throw new Error(data.error || "Something went wrong");
       }
 
+      setNotifications(data.notifications || []);
       // Add AI response
       setMessages((prev) => [
         ...prev,
@@ -291,6 +294,74 @@ function App() {
           <div className="flex items-center gap-2 text-sm text-slate-400">
             <span className="w-2 h-2 rounded-full bg-emerald-400" />
             Online
+          </div>
+
+          <div className="relative">
+            {/* button */}
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="relative w-10 h-10 rounded-full border border-slate-700 bg-slate-900 flex items-center justify-center hover:bg-slate-800 transition"
+            >
+              🔔
+
+              {notifications.length > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                  {notifications.length}
+                </span>
+              )}
+            </button>
+
+            {/* dropdown */}
+            {showNotifications && (
+              <div className="absolute right-0 top-12 w-80 rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl overflow-hidden z-50">
+
+                <div className="px-4 py-3 border-b border-slate-700">
+                  <h3 className="font-semibold text-white">
+                    Notifications
+                  </h3>
+                </div>
+
+                <div className="max-h-80 overflow-y-auto">
+
+                  {notifications.length === 0 ? (
+                    <div className="p-6 text-center text-slate-400">
+                      No notifications
+                    </div>
+                  ) : (
+                    notifications.map((notification) => (
+                      <div
+                        key={notification.id}
+                        className="px-4 py-4 border-b border-slate-800 hover:bg-slate-800/50"
+                      >
+                        <div className="flex gap-3">
+
+                          <div className="w-8 h-8 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center shrink-0">
+                            🔔
+                          </div>
+
+                          <div>
+                            <p className="text-sm text-slate-200">
+                              {notification.message}
+                            </p>
+
+                            {notification.due_date && (
+                              <p className="text-xs text-slate-500 mt-1">
+                                Due:{" "}
+                                {new Date(
+                                  notification.due_date
+                                ).toLocaleString()}
+                              </p>
+                            )}
+                          </div>
+
+                        </div>
+                      </div>
+                    ))
+                  )}
+
+                </div>
+              </div>
+            )}
           </div>
 
         </div>
@@ -408,10 +479,10 @@ function App() {
 
                                   <span
                                     className={`px-2.5 py-1 rounded-full text-xs ${task.priority === "high"
-                                        ? "bg-red-500/10 text-red-400"
-                                        : task.priority === "medium"
-                                          ? "bg-yellow-500/10 text-yellow-400"
-                                          : "bg-slate-800 text-slate-400"
+                                      ? "bg-red-500/10 text-red-400"
+                                      : task.priority === "medium"
+                                        ? "bg-yellow-500/10 text-yellow-400"
+                                        : "bg-slate-800 text-slate-400"
                                       }`}
                                   >
                                     {task.priority}
@@ -419,8 +490,8 @@ function App() {
 
                                   <span
                                     className={`px-2.5 py-1 rounded-full text-xs ${task.status === "completed"
-                                        ? "bg-emerald-500/10 text-emerald-400"
-                                        : "bg-blue-500/10 text-blue-400"
+                                      ? "bg-emerald-500/10 text-emerald-400"
+                                      : "bg-blue-500/10 text-blue-400"
                                       }`}
                                   >
                                     {task.status}

@@ -36,6 +36,10 @@ const tools = toolsResult.tools.map((tool) => ({
 }));
 
 export async function processMessage(userMessage) {
+
+  let taskData = null;
+  let notificationData = null;
+
   const messages = [
     {
       role: "system",
@@ -122,8 +126,6 @@ IMPORTANT RULES:
     }
   ];
 
-  let taskData = null;
-
   // Allow multiple rounds of tool calling
   for (let round = 0; round < 5; round++) {
 
@@ -141,7 +143,8 @@ IMPORTANT RULES:
     if (!assistantMessage.tool_calls?.length) {
       return {
         response: assistantMessage.content || "Done.",
-        tasks: taskData
+        tasks: taskData,
+        notifications: notificationData
       };
     }
 
@@ -310,6 +313,10 @@ IMPORTANT RULES:
           }
         }
 
+        if (toolName === "get_notifications") {
+          notificationData = parsedResult.notifications || [];
+        }
+
       } catch (error) {
         console.error(
           "Failed to parse MCP result:",
@@ -327,7 +334,8 @@ IMPORTANT RULES:
   }
 
   return {
-    response: "I couldn't complete that request.",
-    tasks: taskData
+    response: assistantMessage.content || "Done.",
+    tasks: taskData,
+    notifications: notificationData
   };
 }
