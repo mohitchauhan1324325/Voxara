@@ -202,36 +202,40 @@ function App() {
           {tasks.map((task) => (
             <div
               key={task.id}
-              className="rounded-xl border border-slate-700 bg-slate-950/60 p-4"
+              className="rounded-2xl border border-slate-800 bg-slate-950/80 p-4 hover:border-slate-700 transition"
             >
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3">
 
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs text-slate-500">
-                      #{task.id}
-                    </span>
+                {/* Task ID */}
+                <div className="w-9 h-9 shrink-0 rounded-xl bg-white text-slate-950 flex items-center justify-center text-sm font-bold">
+                  #{task.id}
+                </div>
 
-                    <h3 className="font-semibold text-slate-100">
-                      {task.title}
-                    </h3>
-                  </div>
+                <div className="flex-1 min-w-0">
 
-                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                  {/* Title */}
+                  <h3 className="font-semibold text-slate-100 truncate">
+                    {task.title}
+                  </h3>
 
+                  {/* Metadata */}
+                  <div className="flex flex-wrap gap-2 mt-3">
+
+                    {/* Priority */}
                     <span
-                      className={`px-2.5 py-1 rounded-full text-xs font-medium ${task.priority?.toLowerCase() === "high"
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium ${task.priority === "high"
                         ? "bg-red-500/10 text-red-400 border border-red-500/20"
-                        : task.priority?.toLowerCase() === "medium"
+                        : task.priority === "medium"
                           ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
-                          : "bg-slate-700 text-slate-300"
+                          : "bg-slate-800 text-slate-400 border border-slate-700"
                         }`}
                     >
                       {task.priority}
                     </span>
 
+                    {/* Status */}
                     <span
-                      className={`px-2.5 py-1 rounded-full text-xs font-medium ${task.status?.toLowerCase() === "completed"
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium ${task.status === "completed"
                         ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                         : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
                         }`}
@@ -239,13 +243,15 @@ function App() {
                       {task.status}
                     </span>
 
-                    <span className="text-xs text-slate-500">
-                      Due: {task.dueDate}
-                    </span>
+                    {/* Due date */}
+                    {task.due_date && (
+                      <span className="px-2.5 py-1 rounded-full text-xs bg-slate-800 text-slate-400 border border-slate-700">
+                        Due: {new Date(task.due_date).toLocaleString()}
+                      </span>
+                    )}
 
                   </div>
                 </div>
-
               </div>
             </div>
           ))}
@@ -366,12 +372,23 @@ function App() {
 
             {/* dropdown */}
             {showNotifications && (
-              <div className="absolute right-0 top-12 w-80 rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl overflow-hidden z-50">
+              <div className="absolute right-0 top-12 w-[calc(100vw-2rem)] sm:w-80 rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl overflow-hidden z-50">
 
-                <div className="px-4 py-3 border-b border-slate-700">
-                  <h3 className="font-semibold text-white">
-                    Notifications
-                  </h3>
+                <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-white">
+                      Notifications
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {notifications.length === 0
+                        ? "You're all caught up"
+                        : `${notifications.length} unread`}
+                    </p>
+                  </div>
+
+                  {notifications.length > 0 && (
+                    <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+                  )}
                 </div>
 
                 <div className="max-h-80 overflow-y-auto">
@@ -385,11 +402,11 @@ function App() {
                       <div
                         key={notification.id}
                         onClick={() => markNotificationRead(notification.id)}
-                        className="px-4 py-4 border-b border-slate-800 hover:bg-slate-800/50"
+                        className="px-4 py-4 border-b border-slate-800 hover:bg-slate-800/60 transition cursor-pointer"
                       >
                         <div className="flex gap-3">
 
-                          <div className="w-8 h-8 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center shrink-0">
+                          <div className="w-9 h-9 rounded-xl bg-red-500/10 text-red-400 flex items-center justify-center shrink-0 border border-red-500/10">
                             🔔
                           </div>
 
@@ -425,7 +442,7 @@ function App() {
       <main className="flex-1 max-w-4xl w-full mx-auto px-6 py-8">
 
         {/* Voxara Voice Status - ALWAYS VISIBLE */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-3">
 
           {/* V Icon */}
           <div
@@ -435,8 +452,9 @@ function App() {
                 ? "bg-red-500 shadow-[0_0_50px_rgba(239,68,68,0.5)]"
                 : speaking
                   ? "bg-emerald-500 shadow-[0_0_50px_rgba(16,185,129,0.45)]"
-                  : "bg-white"
-              }
+                  : loading
+                    ? "bg-slate-300 shadow-[0_0_40px_rgba(148,163,184,0.35)]"
+                    : "bg-white"}
       `}
           >
             <span className="text-2xl font-bold text-slate-950">
@@ -466,7 +484,9 @@ function App() {
               ? "I'm listening..."
               : speaking
                 ? "I'm speaking..."
-                : "Voxara"}
+                : loading
+                  ? "I'm thinking..."
+                  : "Voxara"}
           </h2>
 
           {/* Status subtitle */}
@@ -475,10 +495,81 @@ function App() {
               ? "Tell me what you need."
               : speaking
                 ? "Here's what I found."
-                : "Your AI work assistant"}
+                : loading
+                  ? "Working on your request..."
+                  : "Your AI work assistant"}
           </p>
 
         </div>
+
+        {messages.length === 0 && (
+          <div className="mt-2">
+
+            <h3 className="text-center text-lg font-semibold text-slate-200 mb-1">
+              What can I help you with?
+            </h3>
+
+            <p className="text-center text-sm text-slate-500 mb-3">
+              Try asking Voxara to manage your work
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto">
+
+              <button
+                onClick={() => suggestion("Show my pending tasks")}
+                className="text-left p-4 rounded-2xl border border-slate-800 bg-slate-900/70 hover:bg-slate-800 hover:border-slate-700 transition"
+              >
+                <div className="text-lg mb-2">📋</div>
+                <p className="font-medium text-slate-200">
+                  Show my pending tasks
+                </p>
+                <p className="text-xs text-slate-500 mt-1">
+                  See what still needs to be done
+                </p>
+              </button>
+
+              <button
+                onClick={() => suggestion("Create a new task")}
+                className="text-left p-4 rounded-2xl border border-slate-800 bg-slate-900/70 hover:bg-slate-800 hover:border-slate-700 transition"
+              >
+                <div className="text-lg mb-2">➕</div>
+                <p className="font-medium text-slate-200">
+                  Create a new task
+                </p>
+                <p className="text-xs text-slate-500 mt-1">
+                  Add something to your work list
+                </p>
+              </button>
+
+              <button
+                onClick={() => suggestion("Check my reminders")}
+                className="text-left p-4 rounded-2xl border border-slate-800 bg-slate-900/70 hover:bg-slate-800 hover:border-slate-700 transition"
+              >
+                <div className="text-lg mb-2">🔔</div>
+                <p className="font-medium text-slate-200">
+                  Check my reminders
+                </p>
+                <p className="text-xs text-slate-500 mt-1">
+                  See your pending reminders
+                </p>
+              </button>
+
+              <button
+                onClick={() => suggestion("Show my high priority tasks")}
+                className="text-left p-4 rounded-2xl border border-slate-800 bg-slate-900/70 hover:bg-slate-800 hover:border-slate-700 transition"
+              >
+                <div className="text-lg mb-2">⚡</div>
+                <p className="font-medium text-slate-200">
+                  High priority tasks
+                </p>
+                <p className="text-xs text-slate-500 mt-1">
+                  Focus on your most important work
+                </p>
+              </button>
+
+            </div>
+          </div>
+        )}
 
         {/* Existing chat */}
         {messages.length > 0 && (
@@ -487,7 +578,7 @@ function App() {
             {messages.map((msg, index) => (
               <div
                 key={index}
-                className={`flex gap-3 ${msg.role === "user"
+                className={`flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300 ${msg.role === "user"
                   ? "justify-end"
                   : "justify-start"
                   }`}
@@ -500,9 +591,9 @@ function App() {
                 )}
 
                 <div
-                  className={`max-w-[75%] rounded-2xl px-4 py-3 leading-7 whitespace-pre-wrap ${msg.role === "user"
-                    ? "bg-white text-slate-950"
-                    : "bg-slate-900 border border-slate-800 text-slate-200"
+                  className={`w-full sm:max-w-[75%] rounded-2xl px-4 py-3 leading-7 whitespace-pre-wrap shadow-sm transition-all duration-300 ${msg.role === "user"
+                    ? "bg-white text-slate-950 shadow-white/5"
+                    : "bg-slate-900/90 border border-slate-800 text-slate-200 shadow-black/20"
                     }`}
                 >
                   <div className="space-y-4">
@@ -581,10 +672,15 @@ function App() {
                   V
                 </div>
 
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl px-5 py-3 text-slate-500">
-                  Voxara is thinking...
-                </div>
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl px-5 py-3 text-slate-400 flex items-center gap-2">
+                  <span>Voxara is thinking</span>
 
+                  <span className="flex gap-1">
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0ms]" />
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:150ms]" />
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:300ms]" />
+                  </span>
+                </div>
               </div>
             )}
 
