@@ -1,4 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { sendChatMessage } from "./api/chatApi";
+import {
+  getNotifications,
+  markNotificationReadApi,
+} from "./api/notificationApi";
 
 function App() {
   const [message, setMessage] = useState("");
@@ -81,17 +86,10 @@ function App() {
 
   const fetchNotifications = async () => {
     try {
-      const res = await fetch(
-        "http://127.0.0.1:4000/api/notifications"
-      );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        return;
-      }
-
-      const currentNotifications = data.notifications || [];
+      const data = await getNotifications();
+      
+      const currentNotifications =
+        data.notifications || [];
 
       const newNotifications = currentNotifications.filter(
         (notification) =>
@@ -131,12 +129,7 @@ function App() {
 
   const markNotificationRead = async (id) => {
     try {
-      await fetch(
-        `http://127.0.0.1:4000/api/notifications/${id}/read`,
-        {
-          method: "PATCH",
-        }
-      );
+       await markNotificationReadApi(id);
 
       setNotifications((prev) =>
         prev.filter((notification) => notification.id !== id)
@@ -289,21 +282,7 @@ function App() {
     setLoading(true);
 
     try {
-      const res = await fetch("http://127.0.0.1:4000/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: userMessage,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Something went wrong");
-      }
+      const data = await sendChatMessage(userMessage);
 
       setNotifications(data.notifications || []);
       // Add AI response
