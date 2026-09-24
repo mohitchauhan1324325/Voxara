@@ -5,11 +5,17 @@ import pool from "./db.js";
 
 const app = express();
 
+app.use((req, res, next) => {
+  if (req.url?.startsWith("/mcp")) {
+    return next();
+  }
+
+  express.json()(req, res, next);
+});
+
 app.use(cors({
   origin: "http://localhost:5173"
 }));
-
-app.use(express.json());
 
 app.post("/api/chat", async (req, res) => {
   try {
@@ -92,6 +98,4 @@ app.patch("/api/notifications/:id/read", async (req, res) => {
   }
 });
 
-app.listen(4000, () => {
-  console.log("Voxara API running on http://localhost:4000");
-});
+export default app;

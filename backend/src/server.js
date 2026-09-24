@@ -4,6 +4,7 @@ import { createServer } from "node:http";
 import * as z from "zod/v4";
 import { checkReminders } from "./reminder.js";
 import pool from "./db.js";
+import app from "./api.js";
 
 const handler = createMcpHandler(() => {
     const server = new McpServer({
@@ -307,13 +308,18 @@ const handler = createMcpHandler(() => {
 const nodeHandler = toNodeHandler(handler);
 
 const httpServer = createServer((req, res) => {
-    nodeHandler(req, res);
+    if (req.url?.startsWith("/mcp")) {
+        return nodeHandler(req, res);
+    }
+
+    app(req, res);
 });
 
-httpServer.listen(3000, () => {
-    console.log("StudyFlow MCP server running");
-    console.log("MCP endpoint: http://localhost:3000/mcp");
+const PORT = process.env.PORT || 4000;
 
+httpServer.listen(PORT, () => {
+    console.log(`Voxara backend running on port ${PORT}`);
+    
     // Check reminders immediately
     checkReminders();
 

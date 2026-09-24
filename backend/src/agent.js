@@ -16,30 +16,47 @@ const mcpClient = new Client({
   version: "1.0.0"
 });
 
-const transport = new StreamableHTTPClientTransport(
-  new URL("http://localhost:3000/mcp")
-);
+let mcpConnected = false;
+let tools = [];
 
-await mcpClient.connect(transport);
-
-console.log("Voxara AI Agent connected to MCP server!");
-
-const toolsResult = await mcpClient.listTools();
-
-const tools = toolsResult.tools.map((tool) => ({
-  type: "function",
-  function: {
-    name: tool.name,
-    description: tool.description,
-    parameters: tool.inputSchema
+async function connectMCP() {
+  if (mcpConnected) {
+    return;
   }
-}));
+
+  const mcpUrl =
+    process.env.MCP_URL || "http://localhost:4000/mcp";
+
+  const transport = new StreamableHTTPClientTransport(
+    new URL(mcpUrl)
+  );
+
+  await mcpClient.connect(transport);
+
+  console.log("Voxara AI Agent connected to MCP server!");
+
+  const toolsResult = await mcpClient.listTools();
+
+  tools = toolsResult.tools.map((tool) => ({
+    type: "function",
+    function: {
+      name: tool.name,
+      description: tool.description,
+      parameters: tool.inputSchema
+    }
+  }));
+
+  mcpConnected = true;
+}
 
 export async function processMessage(userMessage) {
 
+  await connectMCP();
+
   let taskData = null;
   let notificationData = null;
-const currentDateTime = new Date().toISOString();
+
+  const currentDateTime = new Date().toISOString();
 
   const messages = [
     {
