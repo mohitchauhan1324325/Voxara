@@ -184,6 +184,106 @@ const handler = createMcpHandler(() => {
     );
 
     server.registerTool(
+        "delete_task",
+        {
+            description: "Delete an existing work task",
+            inputSchema: z.object({
+                userId: z.string(),
+                taskId: z.number()
+            })
+        },
+        async ({ userId, taskId }) => {
+            try {
+                const result = await pool.query(
+                    `
+        DELETE FROM tasks
+        WHERE id = $1
+        AND user_id = $2
+        RETURNING *
+        `,
+                    [taskId, userId]
+                );
+
+                if (result.rows.length === 0) {
+                    return {
+                        content: [{
+                            type: "text",
+                            text: JSON.stringify({
+                                error: "Task not found"
+                            })
+                        }]
+                    };
+                }
+
+                return {
+                    content: [{
+                        type: "text",
+                        text: JSON.stringify({
+                            message: "Task deleted successfully",
+                            task: result.rows[0]
+                        })
+                    }]
+                };
+            } catch (error) {
+                console.error("Database error:", error);
+
+                return {
+                    content: [{
+                        type: "text",
+                        text: JSON.stringify({
+                            error: "Failed to delete task"
+                        })
+                    }]
+                };
+            }
+        }
+    );
+
+    server.registerTool(
+        "delete_all_tasks",
+        {
+            description: "Delete all work tasks belonging to the user",
+            inputSchema: z.object({
+                userId: z.string()
+            })
+        },
+        async ({ userId }) => {
+            try {
+                const result = await pool.query(
+                    `
+        DELETE FROM tasks
+        WHERE user_id = $1
+        RETURNING *
+        `,
+                    [userId]
+                );
+
+                return {
+                    content: [{
+                        type: "text",
+                        text: JSON.stringify({
+                            message: "All tasks deleted successfully",
+                            deletedCount: result.rows.length,
+                            tasks: result.rows
+                        })
+                    }]
+                };
+            } catch (error) {
+                console.error("Database error:", error);
+
+                return {
+                    content: [{
+                        type: "text",
+                        text: JSON.stringify({
+                            error: "Failed to delete all tasks"
+                        })
+                    }]
+                };
+            }
+        }
+    );
+
+    server.registerTool(
         "create_task",
         {
             description: "Create a new work task for the user",
@@ -240,6 +340,88 @@ const handler = createMcpHandler(() => {
             }
         }
     );
+
+    server.registerTool(
+        "update_task",
+        {
+            description:
+                "Update an existing work task. Can change the title, priority, or due date.",
+            inputSchema: z.object({
+                userId: z.string(),
+                taskId: z.number(),
+                title: z.string().optional(),
+                priority: z.enum(["low", "medium", "high"]).optional(),
+                dueDate: z.string().nullable().optional()
+            })
+        },
+
+        async ({ userId, taskId, title, priority, dueDate }) => {
+
+            try {
+
+                const result = await pool.query(
+                    `
+                UPDATE tasks
+                SET
+                    title = COALESCE($1, title),
+                    priority = COALESCE($2, priority),
+                    due_date = COALESCE($3, due_date)
+                WHERE id = $4
+                AND user_id = $5
+                RETURNING *
+                `,
+                    [
+                        title ?? null,
+                        priority ?? null,
+                        dueDate ?? null,
+                        taskId,
+                        userId
+                    ]
+                );
+
+                if (result.rows.length === 0) {
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: JSON.stringify({
+                                    error: "Task not found"
+                                })
+                            }
+                        ]
+                    };
+                }
+
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: JSON.stringify({
+                                message: "Task updated successfully",
+                                task: result.rows[0]
+                            })
+                        }
+                    ]
+                };
+
+            } catch (error) {
+
+                console.error("Database error:", error);
+
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: JSON.stringify({
+                                error: "Failed to update task"
+                            })
+                        }
+                    ]
+                };
+            }
+        }
+    );
+
 
     server.registerTool(
         "complete_task",
@@ -319,7 +501,7 @@ const PORT = process.env.PORT || 4000;
 
 httpServer.listen(PORT, () => {
     console.log(`Voxara backend running on port ${PORT}`);
-    
+
     // Check reminders immediately
     checkReminders();
 

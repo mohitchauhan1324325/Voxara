@@ -87,7 +87,7 @@ function App() {
   const fetchNotifications = async () => {
     try {
       const data = await getNotifications();
-      
+
       const currentNotifications =
         data.notifications || [];
 
@@ -129,7 +129,7 @@ function App() {
 
   const markNotificationRead = async (id) => {
     try {
-       await markNotificationReadApi(id);
+      await markNotificationReadApi(id);
 
       setNotifications((prev) =>
         prev.filter((notification) => notification.id !== id)
@@ -282,7 +282,13 @@ function App() {
     setLoading(true);
 
     try {
-      const data = await sendChatMessage(userMessage);
+      const data = await sendChatMessage(
+        userMessage,
+        messages.map((msg) => ({
+          role: msg.role,
+          content: msg.content,
+        }))
+      );
 
       setNotifications(data.notifications || []);
       // Add AI response

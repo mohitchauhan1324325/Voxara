@@ -49,12 +49,13 @@ async function connectMCP() {
   mcpConnected = true;
 }
 
-export async function processMessage(userMessage) {
+export async function processMessage(userMessage, conversationHistory = []) {
 
   await connectMCP();
 
   let taskData = null;
   let notificationData = null;
+  let assistantMessage = null;
 
   const currentDateTime = new Date().toISOString();
 
@@ -69,7 +70,10 @@ You help users manage their work tasks.
 Available tools:
 - get_tasks
 - find_task
+- delete_task
+- delete_all_tasks
 - create_task
+- update_task
 - complete_task
 - get_notifications
 
@@ -146,8 +150,37 @@ IMPORTANT RULES:
     - "Do I have any reminders?"
     - "Check my notifications"
     - "Show my task reminders"
+
+15. For updating an existing task:
+
+   - Use update_task when the user wants to change
+     an existing task's title, priority, or due date.
+   - If the user provides a numeric task ID, use update_task directly.
+   - If the user refers to a task by name or description:
+     - Use find_task first.
+     - If exactly one task is found, use update_task with that task's ID.
+     - If multiple tasks are found, ask which task they mean.
+     - If no task is found, tell the user the task could not be found.
+
+16. For deleting an existing task:
+   - Use delete_task when the user wants to remove/delete an existing task.
+   - If the user provides a numeric task ID, use delete_task directly.
+   - If the user refers to a task by name or description:
+     - Use find_task first.
+     - If exactly one task is found, use delete_task with that task's ID.
+     - If multiple tasks are found, ask which task they mean.
+     - If no task is found, tell the user the task could not be found.
+
+17. For deleting all tasks:
+   - If the user explicitly asks to delete all tasks, delete every task belonging to the current user.
+   - Use delete_all_tasks directly.
+   - Do NOT use get_tasks followed by multiple delete_task calls.
+   - Always use userId: "user123".
 `
     },
+
+    ...conversationHistory,
+
     {
       role: "user",
       content: userMessage
@@ -165,7 +198,7 @@ IMPORTANT RULES:
       parallel_tool_calls: false
     });
 
-    const assistantMessage = response.choices[0].message;
+    assistantMessage = response.choices[0].message;
 
     // AI finished
     if (!assistantMessage.tool_calls?.length) {
