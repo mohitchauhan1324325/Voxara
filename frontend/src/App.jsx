@@ -4,6 +4,7 @@ import {
   getNotifications,
   markNotificationReadApi,
 } from "./api/notificationApi";
+import TasksDashboard from "./component/TaskDashboard.jsx";
 
 function App() {
   const [message, setMessage] = useState("");
@@ -13,6 +14,7 @@ function App() {
   const [speaking, setSpeaking] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [activeView, setActiveView] = useState("chat");
 
   const previousNotificationIds = useRef(new Set());
   const notificationsInitialized = useRef(false);
@@ -350,9 +352,26 @@ function App() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-sm text-slate-400">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            Online
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveView("chat")}
+              className={`rounded-lg px-3 py-2 text-sm transition ${activeView === "chat"
+                ? "bg-white text-slate-950"
+                : "bg-slate-900 text-slate-400 hover:text-white"
+                }`}
+            >
+              Chat
+            </button>
+
+            <button
+              onClick={() => setActiveView("tasks")}
+              className={`rounded-lg px-3 py-2 text-sm transition ${activeView === "tasks"
+                ? "bg-white text-slate-950"
+                : "bg-slate-900 text-slate-400 hover:text-white"
+                }`}
+            >
+              Tasks
+            </button>
           </div>
 
           <div className="relative">
@@ -439,7 +458,10 @@ function App() {
       </header>
 
       {/* Main */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-6 py-8">
+      <main
+        className={`flex-1 max-w-4xl w-full mx-auto px-6 py-8 ${activeView === "tasks" ? "hidden" : ""
+          }`}
+      >
 
         {/* Voxara Voice Status - ALWAYS VISIBLE */}
         <div className="text-center mb-3">
@@ -686,8 +708,9 @@ function App() {
 
           </div>
         )}
-
       </main>
+
+      {activeView === "tasks" && <TasksDashboard />}
 
       {/* Input */}
       <div className="fixed bottom-0 left-0 right-0 bg-slate-950/95 backdrop-blur border-t border-slate-800">

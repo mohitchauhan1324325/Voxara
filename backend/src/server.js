@@ -5,6 +5,7 @@ import * as z from "zod/v4";
 import { checkReminders } from "./reminder.js";
 import pool from "./db.js";
 import app from "./api.js";
+
 import {
     registerAppResource,
     RESOURCE_MIME_TYPE,

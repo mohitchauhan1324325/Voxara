@@ -79,6 +79,30 @@ app.get("/api/notifications", async (req, res) => {
   }
 });
 
+
+app.get("/api/tasks", async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, title, priority, status, due_date, created_at
+       FROM tasks
+       WHERE user_id = $1
+       ORDER BY created_at DESC`,
+      ["user123"]
+    );
+
+    res.json({
+      tasks: result.rows
+    });
+  } catch (error) {
+    console.error("Fetch tasks error:", error);
+
+    res.status(500).json({
+      error: "Failed to fetch tasks"
+    });
+  }
+});
+
+
 app.patch("/api/notifications/:id/read", async (req, res) => {
   try {
     const { id } = req.params;
