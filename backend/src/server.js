@@ -5,6 +5,11 @@ import * as z from "zod/v4";
 import { checkReminders } from "./reminder.js";
 import pool from "./db.js";
 import app from "./api.js";
+import {
+    registerAppResource,
+    RESOURCE_MIME_TYPE,
+} from "@modelcontextprotocol/ext-apps/server";
+
 
 const handler = createMcpHandler(() => {
     const server = new McpServer({
@@ -12,13 +17,47 @@ const handler = createMcpHandler(() => {
         version: "1.0.0"
     });
 
+    const taskUiUri = "ui://voxara/tasks.html";
+
+    registerAppResource(
+        server,
+        "Voxara Tasks UI",
+        taskUiUri,
+        {},
+        async () => ({
+            contents: [
+                {
+                    uri: taskUiUri,
+                    mimeType: RESOURCE_MIME_TYPE,
+                    text: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voxara Tasks</title>
+</head>
+<body>
+  <h1>Voxara Task Dashboard</h1>
+  <p>MCP App resource is registered.</p>
+</body>
+</html>`,
+                },
+            ],
+        }),
+    );
+
     server.registerTool(
         "get_tasks",
         {
             description: "Get the user's current work tasks",
             inputSchema: z.object({
                 userId: z.string()
-            })
+            }),
+            _meta: {
+                ui: {
+                    resourceUri: taskUiUri
+                }
+            }
         },
         async ({ userId }) => {
 

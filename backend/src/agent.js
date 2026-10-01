@@ -19,25 +19,22 @@ const mcpClient = new Client({
 let mcpConnected = false;
 let tools = [];
 
+
 async function connectMCP() {
-  if (mcpConnected) {
-    return;
-  }
+  if (mcpConnected) return;
 
-  const mcpUrl =
-    process.env.MCP_URL || "http://localhost:4000/mcp";
+  const mcpUrl = process.env.MCP_URL || "http://localhost:4000/mcp";
+  const transport = new StreamableHTTPClientTransport(new URL(mcpUrl));
 
-  const transport = new StreamableHTTPClientTransport(
-    new URL(mcpUrl)
-  );
-
+  console.log("Step 1: Connecting to MCP...");
   await mcpClient.connect(transport);
 
-  console.log("Voxara AI Agent connected to MCP server!");
-
+  console.log("Step 2: MCP connected. Listing tools...");
   const toolsResult = await mcpClient.listTools();
 
-  tools = toolsResult.tools.map((tool) => ({
+  console.log("Step 3: Tools received:", toolsResult.tools.map(t => t.name));
+
+  tools = toolsResult.tools.map(tool => ({
     type: "function",
     function: {
       name: tool.name,
@@ -48,6 +45,7 @@ async function connectMCP() {
 
   mcpConnected = true;
 }
+
 
 export async function processMessage(userMessage, conversationHistory = []) {
 
@@ -186,7 +184,6 @@ IMPORTANT RULES:
       content: userMessage
     }
   ];
-
   // Allow multiple rounds of tool calling
   for (let round = 0; round < 5; round++) {
 
@@ -384,6 +381,7 @@ IMPORTANT RULES:
           error
         );
       }
+
 
       // Send tool result back to AI
       messages.push({
