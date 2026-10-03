@@ -331,23 +331,24 @@ const handler = createMcpHandler(() => {
                 userId: z.string(),
                 title: z.string(),
                 priority: z.enum(["low", "medium", "high"]),
-                dueDate: z.string().nullable().optional()
+                dueDate: z.string().nullable().optional(),
+                remindAt: z.string().nullable().optional()
             })
         },
-        async ({ userId, title, priority, dueDate }) => {
-
+        async ({ userId, title, priority, dueDate, remindAt }) => {
             try {
                 const result = await pool.query(
                     `INSERT INTO tasks
-         (user_id, title, priority, status, due_date)
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING *`,
+                (user_id, title, priority, status, due_date, remind_at)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                RETURNING *`,
                     [
                         userId,
                         title,
                         priority,
                         "pending",
-                        dueDate || null
+                        dueDate || null,
+                        remindAt || null
                     ]
                 );
 
@@ -362,9 +363,7 @@ const handler = createMcpHandler(() => {
                         }
                     ]
                 };
-
             } catch (error) {
-
                 console.error("Database error:", error);
 
                 return {
@@ -543,8 +542,9 @@ httpServer.listen(PORT, () => {
     console.log(`Voxara backend running on port ${PORT}`);
 
     // Check reminders immediately
-    checkReminders();
-
+    setTimeout(() => {
+        checkReminders();
+    }, 2000);
     // Check every 1 minute
     setInterval(checkReminders, 60 * 1000);
 });

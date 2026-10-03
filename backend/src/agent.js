@@ -94,12 +94,21 @@ IMPORTANT RULES:
 
    - Use create_task.
 
+
 3. For creating tasks with a due date or reminder time:
 
-   - If the user provides a date or time, use create_task.
-   - Pass the date/time in the dueDate field.
-   - Convert natural language date/time into an ISO datetime string.
-   - If no date or time is provided, use dueDate: null.
+   - Use create_task to create a new task.
+   - If the user specifies a task deadline, pass it in dueDate.
+   - If the user specifies when they want to be reminded,
+     pass it in remindAt.
+   - Keep dueDate and remindAt separate.
+   - Convert natural language dates and times into ISO
+     datetime strings using the current date and time.
+   - If no deadline is specified, use dueDate: null.
+   - If no reminder time is specified, use remindAt: null.
+   - Never assume the deadline is also the reminder time.
+   - If the user asks to be reminded but gives no time,
+     ask when they want to be reminded.
 
 4. For completing a task:
 
