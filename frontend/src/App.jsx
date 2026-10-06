@@ -713,53 +713,55 @@ function App() {
       {activeView === "tasks" && <TasksDashboard />}
 
       {/* Input */}
-      <div className="fixed bottom-0 left-0 right-0 bg-slate-950/95 backdrop-blur border-t border-slate-800">
+      {activeView === "chat" && (
+        <div className="fixed bottom-0 left-0 right-0 bg-slate-950/95 backdrop-blur border-t border-slate-800">
 
-        <div className="max-w-4xl mx-auto px-6 py-4">
+          <div className="max-w-4xl mx-auto px-6 py-4">
 
-          <div className="flex gap-3">
+            <div className="flex gap-3">
 
-            <input
-              type="text"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  sendMessage();
-                }
-              }}
-              placeholder="Ask Voxara anything about your tasks..."
-              disabled={loading}
-              className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-3.5 outline-none text-white placeholder:text-slate-600 focus:border-slate-600 disabled:opacity-50"
-            />
+              <input
+                type="text"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    sendMessage();
+                  }
+                }}
+                placeholder="Ask Voxara anything about your tasks..."
+                disabled={loading}
+                className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-3.5 outline-none text-white placeholder:text-slate-600 focus:border-slate-600 disabled:opacity-50"
+              />
 
-            <button
-              onClick={sendMessage}
-              disabled={loading || !message.trim()}
-              className="px-6 rounded-xl bg-white text-slate-950 font-semibold hover:bg-slate-200 transition disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {loading ? "..." : "Send"}
-            </button>
-            <button
-              onClick={startListening}
-              disabled={loading || listening}
-              className={`px-4 rounded-xl font-semibold transition ${listening
-                ? "bg-red-500 text-white"
-                : "bg-slate-800 text-white hover:bg-slate-700"
-                }`}
-            >
-              {listening ? "🔴" : "🎙️"}
-            </button>
+              <button
+                onClick={sendMessage}
+                disabled={loading || !message.trim()}
+                className="px-6 rounded-xl bg-white text-slate-950 font-semibold hover:bg-slate-200 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {loading ? "..." : "Send"}
+              </button>
+              <button
+                onClick={startListening}
+                disabled={loading || listening}
+                className={`px-4 rounded-xl font-semibold transition ${listening
+                  ? "bg-red-500 text-white"
+                  : "bg-slate-800 text-white hover:bg-slate-700"
+                  }`}
+              >
+                {listening ? "🔴" : "🎙️"}
+              </button>
+
+            </div>
+
+            <p className="text-center text-xs text-slate-600 mt-3">
+              Voxara can manage your tasks using AI + MCP
+            </p>
 
           </div>
 
-          <p className="text-center text-xs text-slate-600 mt-3">
-            Voxara can manage your tasks using AI + MCP
-          </p>
-
         </div>
-
-      </div>
+      )}
 
     </div>
   );

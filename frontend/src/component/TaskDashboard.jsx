@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getTasks, createTask } from "../api/taskApi";
+import { getTasks, createTask, completeTask } from "../api/taskApi";
 
 const TasksDashboard = () => {
     const [tasks, setTasks] = useState([]);
@@ -69,6 +69,16 @@ const TasksDashboard = () => {
             setError("Failed to create task.");
         } finally {
             setCreating(false);
+        }
+    };
+
+    const handleCompleteTask = async (taskId) => {
+        try {
+            await completeTask(taskId);
+            await fetchTasks();
+        } catch (err) {
+            console.error("Complete task error:", err);
+            setError("Failed to complete task.");
         }
     };
 
@@ -222,6 +232,14 @@ const TasksDashboard = () => {
                                     ? new Date(task.due_date).toLocaleDateString()
                                     : "No due date"}
                             </p>
+                            {task.status === "pending" && (
+                                <button
+                                    onClick={() => handleCompleteTask(task.id)}
+                                    className="mt-4 w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-emerald-500"
+                                >
+                                    Mark as Completed
+                                </button>
+                            )}
                         </div>
                     ))}
                 </div>

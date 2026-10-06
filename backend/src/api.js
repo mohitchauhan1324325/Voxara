@@ -138,6 +138,37 @@ app.post("/api/tasks", async (req, res) => {
   }
 });
 
+app.patch("/api/tasks/:id/complete", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `UPDATE tasks
+       SET status = 'completed'
+       WHERE id = $1
+       AND user_id = $2
+       RETURNING id, title, priority, status, due_date, created_at`,
+      [id, "user123"]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        error: "Task not found"
+      });
+    }
+
+    res.json({
+      task: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error("Complete task error:", error);
+
+    res.status(500).json({
+      error: "Failed to complete task"
+    });
+  }
+});
 
 app.patch("/api/notifications/:id/read", async (req, res) => {
   try {
