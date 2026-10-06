@@ -31,17 +31,17 @@ const handler = createMcpHandler(() => {
                     uri: taskUiUri,
                     mimeType: RESOURCE_MIME_TYPE,
                     text: `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Voxara Tasks</title>
-</head>
-<body>
-  <h1>Voxara Task Dashboard</h1>
-  <p>MCP App resource is registered.</p>
-</body>
-</html>`,
+                           <html>
+                           <head>
+                           <meta charset="UTF-8" />
+                           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                           <title>Voxara Tasks</title>
+                           </head>
+                           <body>
+                           <h1>Voxara Task Dashboard</h1>
+                           <p>MCP App resource is registered.</p>
+                           </body>
+                           </html>`,
                 },
             ],
         }),

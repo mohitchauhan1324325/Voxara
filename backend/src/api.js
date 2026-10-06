@@ -102,6 +102,42 @@ app.get("/api/tasks", async (req, res) => {
   }
 });
 
+app.post("/api/tasks", async (req, res) => {
+  try {
+    const { title, priority, due_date } = req.body;
+
+    if (!title) {
+      return res.status(400).json({
+        error: "Task title is required"
+      });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO tasks
+       (title, priority, status, due_date, user_id)
+       VALUES ($1, $2, 'pending', $3, $4)
+       RETURNING id, title, priority, status, due_date, created_at`,
+      [
+        title,
+        priority || "medium",
+        due_date || null,
+        "user123"
+      ]
+    );
+
+    res.status(201).json({
+      task: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error("Create task error:", error);
+
+    res.status(500).json({
+      error: "Failed to create task"
+    });
+  }
+});
+
 
 app.patch("/api/notifications/:id/read", async (req, res) => {
   try {
