@@ -1,4 +1,4 @@
-import Groq from "groq-sdk";
+import { BedrockRuntimeClient, ConverseCommand } from "@aws-sdk/client-bedrock-runtime";
 import {
   Client,
   StreamableHTTPClientTransport
@@ -7,9 +7,9 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY
-});
+const bedrock = new BedrockRuntimeClient({
+  region: "ap-south-1",
+})
 
 const mcpClient = new Client({
   name: "voxara-agent",
@@ -34,13 +34,14 @@ async function connectMCP() {
 
   console.log("Step 3: Tools received:", toolsResult.tools.map(t => t.name));
 
-  tools = toolsResult.tools.map(tool => ({
-    type: "function",
-    function: {
+  tools = toolsResult.tools.map((tool) => ({
+    toolSpec: {
       name: tool.name,
       description: tool.description,
-      parameters: tool.inputSchema
-    }
+      inputSchema: {
+        json: tool.inputSchema,
+      },
+    },
   }));
 
   mcpConnected = true;
@@ -56,12 +57,8 @@ export async function processMessage(userMessage, conversationHistory = []) {
   let assistantMessage = null;
 
   const currentDateTime = new Date().toISOString();
-
-  const messages = [
-    {
-      role: "system",
-      content: `
-You are Voxara, an AI work assistant.
+  const systemPrompt = `
+  You are Voxara, an AI work assistant.
 
 You help users manage their work tasks.
 
@@ -183,35 +180,60 @@ IMPORTANT RULES:
    - Use delete_all_tasks directly.
    - Do NOT use get_tasks followed by multiple delete_task calls.
    - Always use userId: "user123".
-`
-    },
+`;
 
-    ...conversationHistory,
-
+  const messages = [
+    ...conversationHistory.map((message) => ({
+      role: message.role,
+      content: [
+        {
+          text:
+            typeof message.content === "string"
+              ? message.content
+              : "",
+        },
+      ],
+    })),
     {
       role: "user",
-      content: userMessage
-    }
+      content: [{ text: userMessage }],
+    },
   ];
+
   // Allow multiple rounds of tool calling
   for (let round = 0; round < 5; round++) {
 
-    const response = await groq.chat.completions.create({
-      model: "openai/gpt-oss-20b",
-      messages,
-      tools,
-      tool_choice: "auto",
-      parallel_tool_calls: false
-    });
+    const response = await bedrock.send(
+      new ConverseCommand({
+        modelId: "global.amazon.nova-2-lite-v1:0",
+        system: [{ text: systemPrompt }],
+        messages,
+        toolConfig: {
+          tools,
+        },
+        inferenceConfig: {
+          maxTokens: 2048,
+          temperature: 0.2,
+        },
+      })
+    );
 
-    assistantMessage = response.choices[0].message;
+    assistantMessage = response.output.message;
 
     // AI finished
-    if (!assistantMessage.tool_calls?.length) {
+    const toolCalls = (assistantMessage.content || [])
+      .filter((block) => block.toolUse)
+      .map((block) => block.toolUse);
+
+    if (toolCalls.length === 0) {
       return {
-        response: assistantMessage.content || "Done.",
+        response:
+          assistantMessage.content
+            ?.filter((block) => block.text)
+            .map((block) => block.text)
+            .join("\n") || "Done.",
         tasks: taskData,
-        notifications: notificationData
+        notifications: notificationData,
       };
     }
 
@@ -219,13 +241,10 @@ IMPORTANT RULES:
     messages.push(assistantMessage);
 
     // Execute tools
-    for (const toolCall of assistantMessage.tool_calls) {
+    for (const toolCall of toolCalls) {
+      const toolName = toolCall.name;
 
-      const toolName = toolCall.function.name;
-
-      const toolArguments = JSON.parse(
-        toolCall.function.arguments || "{}"
-      );
+      const toolArguments = toolCall.input || {};
 
       // Always provide userId
       if (!toolArguments.userId) {
@@ -394,9 +413,19 @@ IMPORTANT RULES:
 
       // Send tool result back to AI
       messages.push({
-        role: "tool",
-        tool_call_id: toolCall.id,
-        content: JSON.stringify(toolResult)
+        role: "user",
+        content: [
+          {
+            toolResult: {
+              toolUseId: toolCall.toolUseId,
+              content: [
+                {
+                  text: JSON.stringify(toolResult),
+                },
+              ],
+            },
+          },
+        ],
       });
     }
   }

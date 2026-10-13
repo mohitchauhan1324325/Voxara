@@ -12,6 +12,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.1150.0",
     "@modelcontextprotocol/client": "^2.0.0",
     "@modelcontextprotocol/ext-apps": "^2.0.3",
     "@modelcontextprotocol/node": "^2.0.0",
