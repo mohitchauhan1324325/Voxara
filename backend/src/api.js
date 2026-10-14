@@ -22,7 +22,12 @@ app.use(cors({
 
 app.post("/api/chat", async (req, res) => {
   try {
-    const { message, conversationHistory = [] } = req.body;
+
+    const {
+      message,
+      conversationHistory = [],
+      idempotencyKey
+    } = req.body;
 
     if (!message) {
       return res.status(400).json({
@@ -32,7 +37,8 @@ app.post("/api/chat", async (req, res) => {
 
     const result = await processMessage(
       message,
-      conversationHistory
+      conversationHistory,
+      idempotencyKey
     );
 
     res.json(result);

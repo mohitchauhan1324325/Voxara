@@ -272,12 +272,14 @@ function App() {
     );
   };
 
-  const sendMessage = async () => {
+  const sendMessage = async () => { 
     if (!message.trim() || loading) return;
 
     const userMessage = message.trim();
 
-    // Add user message
+    // Generate one key for this logical request
+    const requestId = crypto.randomUUID();
+
     setMessages((prev) => [
       ...prev,
       {
@@ -295,11 +297,12 @@ function App() {
         messages.map((msg) => ({
           role: msg.role,
           content: msg.content,
-        }))
+        })),
+        requestId
       );
 
       setNotifications(data.notifications || []);
-      // Add AI response
+
       setMessages((prev) => [
         ...prev,
         {

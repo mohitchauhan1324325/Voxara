@@ -4,6 +4,7 @@ import {
   StreamableHTTPClientTransport
 } from "@modelcontextprotocol/client";
 import dotenv from "dotenv";
+import { randomUUID } from "node:crypto";
 
 dotenv.config();
 
@@ -48,7 +49,11 @@ async function connectMCP() {
 }
 
 
-export async function processMessage(userMessage, conversationHistory = []) {
+export async function processMessage(
+  userMessage,
+  conversationHistory = [],
+  requestId = randomUUID()
+) {
 
   await connectMCP();
 
@@ -200,23 +205,41 @@ IMPORTANT RULES:
     },
   ];
 
+  const idempotencyKey = requestId;
+
   // Allow multiple rounds of tool calling
   for (let round = 0; round < 5; round++) {
 
-    const response = await bedrock.send(
-      new ConverseCommand({
-        modelId: "global.amazon.nova-2-lite-v1:0",
-        system: [{ text: systemPrompt }],
-        messages,
-        toolConfig: {
-          tools,
-        },
-        inferenceConfig: {
-          maxTokens: 2048,
-          temperature: 0.2,
-        },
-      })
-    );
+    let response;
+
+    try {
+      response = await bedrock.send(
+        new ConverseCommand({
+          modelId: "global.amazon.nova-2-lite-v1:0",
+          system: [{ text: systemPrompt }],
+          messages,
+          toolConfig: {
+            tools,
+          },
+          inferenceConfig: {
+            maxTokens: 2048,
+            temperature: 0.2,
+          },
+        })
+      );
+    } catch (error) {
+      console.error("Bedrock error:", error.name, error.message);
+
+      if (error.name === "ThrottlingException") {
+        throw new Error("Voxara is busy. Please try again shortly.");
+      }
+
+      if (error.name === "AccessDeniedException") {
+        throw new Error("Voxara cannot access the AI service right now.");
+      }
+
+      throw new Error("Failed to get an AI response.");
+    }
 
     assistantMessage = response.output.message;
 
@@ -251,13 +274,31 @@ IMPORTANT RULES:
         toolArguments.userId = "user123";
       }
 
+      if (toolName === "create_task" && !toolArguments.idempotencyKey) {
+        toolArguments.idempotencyKey = idempotencyKey;
+      }
+
       console.log(`Calling MCP tool: ${toolName}`);
       console.log("Arguments:", toolArguments);
 
-      const toolResult = await mcpClient.callTool({
-        name: toolName,
-        arguments: toolArguments
-      });
+      let toolResult;
+
+      try {
+        toolResult = await mcpClient.callTool({
+          name: toolName,
+          arguments: toolArguments
+        });
+
+        if (toolResult.isError) {
+          console.error(`MCP tool failed: ${toolName}`, toolResult.content);
+        }
+      } catch (error) {
+        console.error(`MCP connection/tool error: ${toolName}`, error.message);
+
+        throw new Error(
+          `Failed to execute ${toolName}. Please try again.`
+        );
+      }
 
       console.log("MCP result:", toolResult);
 
@@ -431,8 +472,9 @@ IMPORTANT RULES:
   }
 
   return {
-    response: assistantMessage.content || "Done.",
+    response:
+      "I couldn't finish this request within the allowed steps. Please check your tasks before trying again.",
     tasks: taskData,
-    notifications: notificationData
+    notifications: notificationData,
   };
 }

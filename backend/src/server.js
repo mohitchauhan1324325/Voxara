@@ -332,25 +332,48 @@ const handler = createMcpHandler(() => {
                 title: z.string(),
                 priority: z.enum(["low", "medium", "high"]),
                 dueDate: z.string().nullable().optional(),
-                remindAt: z.string().nullable().optional()
+                remindAt: z.string().nullable().optional(),
+                idempotencyKey: z.string().uuid().optional()
             })
         },
-        async ({ userId, title, priority, dueDate, remindAt }) => {
+        async ({
+            userId,
+            title,
+            priority,
+            dueDate,
+            remindAt,
+            idempotencyKey
+        }) => {
             try {
                 const result = await pool.query(
                     `INSERT INTO tasks
-                (user_id, title, priority, status, due_date, remind_at)
-                VALUES ($1, $2, $3, $4, $5, $6)
-                RETURNING *`,
+                     (user_id, title, priority, status, due_date, remind_at, idempotency_key)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7)
+                     ON CONFLICT (user_id, idempotency_key)
+                     DO NOTHING
+                     RETURNING *`,
                     [
                         userId,
                         title,
                         priority,
                         "pending",
                         dueDate || null,
-                        remindAt || null
+                        remindAt || null,
+                        idempotencyKey
                     ]
                 );
+
+                let task = result.rows[0];
+
+                if (!task) {
+                    const existing = await pool.query(
+                        `SELECT * FROM tasks
+                         WHERE user_id = $1 AND idempotency_key = $2`,
+                        [userId, idempotencyKey]
+                    );
+
+                    task = existing.rows[0];
+                }
 
                 return {
                     content: [
@@ -358,7 +381,7 @@ const handler = createMcpHandler(() => {
                             type: "text",
                             text: JSON.stringify({
                                 message: "Task created successfully",
-                                task: result.rows[0]
+                                task
                             })
                         }
                     ]
