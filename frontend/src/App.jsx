@@ -15,7 +15,7 @@ function App() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [activeView, setActiveView] = useState("chat");
-
+  const [failedRequest, setFailedRequest] = useState(null);
   const previousNotificationIds = useRef(new Set());
   const notificationsInitialized = useRef(false);
 
@@ -272,35 +272,49 @@ function App() {
     );
   };
 
-  const sendMessage = async () => { 
-    if (!message.trim() || loading) return;
 
-    const userMessage = message.trim();
+  const sendMessage = async () => {
+    if (loading) return;
 
-    // Generate one key for this logical request
-    const requestId = crypto.randomUUID();
+    // Reuse the failed request if the user retries the same message.
+    const isRetry =
+      failedRequest && message.trim() === failedRequest.message;
 
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: "user",
-        content: userMessage,
-      },
-    ]);
+    if (!message.trim() && !failedRequest) return;
 
-    setMessage("");
+    const userMessage = isRetry
+      ? failedRequest.message
+      : message.trim();
+
+    const conversationHistory = isRetry
+      ? failedRequest.conversationHistory
+      : messages.map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+      }));
+
+    const requestId = isRetry
+      ? failedRequest.requestId
+      : crypto.randomUUID();
+
+    if (!isRetry) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", content: userMessage },
+      ]);
+      setMessage("");
+    }
+
     setLoading(true);
 
     try {
       const data = await sendChatMessage(
         userMessage,
-        messages.map((msg) => ({
-          role: msg.role,
-          content: msg.content,
-        })),
+        conversationHistory,
         requestId
       );
 
+      setFailedRequest(null);
       setNotifications(data.notifications || []);
 
       setMessages((prev) => [
@@ -316,17 +330,26 @@ function App() {
     } catch (error) {
       console.error(error);
 
+      // Preserve the original ID for the next attempt.
+      setFailedRequest({
+        message: userMessage,
+        conversationHistory,
+        requestId,
+      });
+
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: "Sorry, something went wrong. Please try again.",
+          content:
+            "The request failed. Please reconnect and retry the same message.",
         },
       ]);
     } finally {
       setLoading(false);
     }
   };
+
 
   const suggestion = (text) => {
     setMessage(text);

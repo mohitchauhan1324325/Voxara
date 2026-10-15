@@ -7,6 +7,7 @@ import pool from "./db.js";
 import app from "./api.js";
 
 import {
+    registerAppTool,
     registerAppResource,
     RESOURCE_MIME_TYPE,
 } from "@modelcontextprotocol/ext-apps/server";
@@ -47,7 +48,8 @@ const handler = createMcpHandler(() => {
         }),
     );
 
-    server.registerTool(
+    registerAppTool(
+        server,
         "get_tasks",
         {
             description: "Get the user's current work tasks",
@@ -95,7 +97,11 @@ const handler = createMcpHandler(() => {
                                 error: "Failed to fetch tasks"
                             })
                         }
-                    ]
+                    ],
+                    structuredContent: {
+                        userId,
+                        tasks: result.rows
+                    }
                 };
             }
         }
@@ -553,6 +559,32 @@ const nodeHandler = toNodeHandler(handler);
 
 const httpServer = createServer((req, res) => {
     if (req.url?.startsWith("/mcp")) {
+        const origin = req.headers.origin;
+
+        // Allow the local MCP Apps development host.
+        if (origin === "http://localhost:8080") {
+            res.setHeader("Access-Control-Allow-Origin", origin);
+            res.setHeader("Vary", "Origin");
+            res.setHeader(
+                "Access-Control-Allow-Methods",
+                "GET, POST, DELETE, OPTIONS"
+            );
+            res.setHeader(
+                "Access-Control-Allow-Headers",
+                "Content-Type, Authorization, Mcp-Session-Id, Mcp-Protocol-Version, Last-Event-ID"
+            );
+        }
+
+        if (req.method === "OPTIONS") {
+            if (origin !== "http://localhost:8080") {
+                res.writeHead(403);
+                return res.end("Origin not allowed");
+            }
+
+            res.writeHead(204);
+            return res.end();
+        }
+
         return nodeHandler(req, res);
     }
 
