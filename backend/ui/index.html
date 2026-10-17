@@ -1,0 +1,165 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voxara Tasks</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: Inter, system-ui, sans-serif;
+      background: #0b1020;
+      color: #e5e7eb;
+    }
+
+    .container { max-width: 760px; margin: auto; }
+
+    .header { margin-bottom: 28px; }
+
+    .brand {
+      color: #a78bfa;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 3px;
+    }
+
+    h1 { margin: 8px 0; font-size: 30px; }
+    .subtitle { color: #94a3b8; margin: 0; }
+
+    .panel {
+      background: #141b2d;
+      border: 1px solid #273149;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 22px;
+    }
+
+    .panel h2 { margin: 0 0 16px; font-size: 17px; }
+
+    form {
+      display: grid;
+      grid-template-columns: 1fr 145px auto;
+      gap: 10px;
+    }
+
+    input, select {
+      min-width: 0;
+      padding: 12px;
+      border: 1px solid #34415b;
+      border-radius: 9px;
+      background: #0b1020;
+      color: #f8fafc;
+      font: inherit;
+    }
+
+    button {
+      padding: 12px 16px;
+      border: 0;
+      border-radius: 9px;
+      background: #8b5cf6;
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .2s, transform .2s;
+    }
+
+    button:hover { background: #7c3aed; transform: translateY(-1px); }
+    button:disabled { opacity: .5; cursor: wait; transform: none; }
+
+    .task-list { display: grid; gap: 12px; }
+
+    .task-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px;
+      background: #141b2d;
+      border: 1px solid #273149;
+      border-radius: 13px;
+    }
+
+    .task-title { margin: 0 0 9px; font-size: 15px; }
+    .task-meta { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .badge {
+      display: inline-block;
+      padding: 5px 9px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      background: #263248;
+      color: #cbd5e1;
+      text-transform: capitalize;
+    }
+
+    .priority-high { background: #4c202d; color: #fda4af; }
+    .priority-medium { background: #49371b; color: #fcd34d; }
+    .priority-low { background: #173d35; color: #6ee7b7; }
+    .status-completed { background: #173d35; color: #6ee7b7; }
+
+    .complete-btn {
+      background: #263248;
+      border: 1px solid #3b4963;
+      white-space: nowrap;
+    }
+
+    .complete-btn:hover { background: #334155; }
+
+    #status {
+      margin: 0 0 16px;
+      color: #94a3b8;
+      font-size: 13px;
+    }
+
+    .empty {
+      padding: 28px;
+      text-align: center;
+      color: #94a3b8;
+      border: 1px dashed #34415b;
+      border-radius: 12px;
+    }
+
+    @media (max-width: 600px) {
+      body { padding: 16px; }
+      form { grid-template-columns: 1fr; }
+      .task-card { align-items: flex-start; }
+      .complete-btn { padding: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header class="header">
+      <div class="brand">VOXARA</div>
+      <h1>My Tasks</h1>
+      <p class="subtitle">Your work, organized in one place.</p>
+    </header>
+
+    <section class="panel">
+      <h2>Create a new task</h2>
+      <form id="create-task-form">
+        <input id="task-title" type="text"
+          placeholder="What needs to get done?" required />
+        <select id="task-priority">
+          <option value="low">Low priority</option>
+          <option value="medium" selected>Medium priority</option>
+          <option value="high">High priority</option>
+        </select>
+        <button id="create-task-button" type="submit">+ Create</button>
+      </form>
+    </section>
+
+    <section>
+      <p id="status">Loading tasks...</p>
+      <div id="tasks" class="task-list"></div>
+    </section>
+  </main>
+
+  <script type="module" src="/main.js"></script>
+</body>
+</html>

@@ -5,6 +5,7 @@ import * as z from "zod/v4";
 import { checkReminders } from "./reminder.js";
 import pool from "./db.js";
 import app from "./api.js";
+import { readFileSync } from "node:fs";
 
 import {
     registerAppTool,
@@ -21,6 +22,11 @@ const handler = createMcpHandler(() => {
 
     const taskUiUri = "ui://voxara/tasks.html";
 
+    const taskUiHtml = readFileSync(
+        new URL("../ui/dist/index.html", import.meta.url),
+        "utf8"
+    );
+
     registerAppResource(
         server,
         "Voxara Tasks UI",
@@ -31,18 +37,14 @@ const handler = createMcpHandler(() => {
                 {
                     uri: taskUiUri,
                     mimeType: RESOURCE_MIME_TYPE,
-                    text: `<!DOCTYPE html>
-                           <html>
-                           <head>
-                           <meta charset="UTF-8" />
-                           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                           <title>Voxara Tasks</title>
-                           </head>
-                           <body>
-                           <h1>Voxara Task Dashboard</h1>
-                           <p>MCP App resource is registered.</p>
-                           </body>
-                           </html>`,
+                    _meta: {
+                        ui: {
+                            csp: {
+                                resourceDomains: ["https://esm.sh"]
+                            }
+                        }
+                    },
+                    text: taskUiHtml
                 },
             ],
         }),
@@ -82,14 +84,18 @@ const handler = createMcpHandler(() => {
                                 tasks: result.rows
                             })
                         }
-                    ]
+                    ],
+                    structuredContent: {
+                        userId,
+                        tasks: result.rows
+                    }
                 };
 
             } catch (error) {
-
                 console.error("Database error:", error);
 
                 return {
+                    isError: true,
                     content: [
                         {
                             type: "text",
@@ -97,11 +103,7 @@ const handler = createMcpHandler(() => {
                                 error: "Failed to fetch tasks"
                             })
                         }
-                    ],
-                    structuredContent: {
-                        userId,
-                        tasks: result.rows
-                    }
+                    ]
                 };
             }
         }
