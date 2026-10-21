@@ -12,14 +12,20 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [listening, setListening] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const audioRef = useRef(null);
+  const audioUrlRef = useRef(null);
+  const ttsRequestIdRef = useRef(0);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [activeView, setActiveView] = useState("chat");
   const [failedRequest, setFailedRequest] = useState(null);
   const previousNotificationIds = useRef(new Set());
   const notificationsInitialized = useRef(false);
-
+  
   const startListening = () => {
+
+    stopSpeaking();
+
     const SpeechRecognition =
       window.SpeechRecognition ||
       window.webkitSpeechRecognition;
@@ -58,32 +64,108 @@ function App() {
     recognition.start();
   };
 
-  const speakResponse = (text) => {
-    if (!("speechSynthesis" in window)) {
-      return;
+
+  const cleanSpeechText = (text) => {
+    return String(text ?? "")
+      // Remove Markdown code blocks but preserve their readable content
+      .replace(/```[\s\S]*?```/g, (match) =>
+        match.replace(/```[\w-]*\n?/g, "").replace(/```/g, "")
+      )
+      // Remove Markdown images and links, keeping link text
+      .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      // Remove HTML tags
+      .replace(/<[^>]*>/g, " ")
+      // Remove Markdown heading, bold, italic and strikethrough markers
+      .replace(/^\s{0,3}#{1,6}\s*/gm, "")
+      .replace(/(\*\*|__|~~|\*|_)/g, "")
+      // Speak common technical identifiers naturally
+      .replace(/\btask_id\b/gi, "task ID")
+      .replace(/\buser_id\b/gi, "user ID")
+      .replace(/\bapi\b/gi, "A P I")
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
+      // Replace common separators with pauses
+      .replace(/[|*_`~#=]+/g, " ")
+      .replace(/[:;]+/g, ", ")
+      .replace(/([.!?])\s*/g, "$1 ")
+      // Remove other symbols while preserving letters, numbers and punctuation
+      .replace(/[^\p{L}\p{N}\s.,!?'-]/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  };
+
+  const stopSpeaking = () => {
+    // Invalidate pending TTS requests
+    ttsRequestIdRef.current++;
+
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current.src = "";
+      audioRef.current = null;
     }
 
-    window.speechSynthesis.cancel();
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
 
-    const utterance = new SpeechSynthesisUtterance(text);
+    setSpeaking(false);
+  };
 
-    utterance.lang = "en-US";
-    utterance.rate = 1;
-    utterance.pitch = 1;
+  const speakResponse = async (text) => {
+    const cleanText = cleanSpeechText(text);
+    if (!cleanText) return;
 
-    utterance.onstart = () => {
-      setSpeaking(true);
-    };
+    stopSpeaking();
 
-    utterance.onend = () => {
-      setSpeaking(false);
-    };
+    const requestId = ++ttsRequestIdRef.current;
+    setSpeaking(true);
 
-    utterance.onerror = () => {
-      setSpeaking(false);
-    };
+    try {
+      const response = await fetch("http://127.0.0.1:5001/tts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text: cleanText }),
+      });
 
-    window.speechSynthesis.speak(utterance);
+      if (!response.ok) {
+        throw new Error(`Kokoro TTS failed: ${response.status}`);
+      }
+
+      const audioBlob = await response.blob();
+
+      // If stopped while generating audio, don't play it.
+      if (requestId !== ttsRequestIdRef.current) return;
+
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+
+      audioRef.current = audio;
+      audioUrlRef.current = audioUrl;
+
+      const cleanup = () => {
+        if (audioRef.current === audio) {
+          audioRef.current = null;
+          audioUrlRef.current = null;
+          setSpeaking(false);
+        }
+
+        URL.revokeObjectURL(audioUrl);
+      };
+
+      audio.onended = cleanup;
+      audio.onerror = cleanup;
+
+      await audio.play();
+    } catch (error) {
+      if (requestId === ttsRequestIdRef.current) {
+        setSpeaking(false);
+        console.error("Kokoro TTS error:", error);
+      }
+    }
   };
 
   const fetchNotifications = async () => {
@@ -767,6 +849,17 @@ function App() {
               >
                 {loading ? "..." : "Send"}
               </button>
+
+              {speaking && (
+                <button
+                  onClick={stopSpeaking}
+                  className="px-4 rounded-xl bg-red-500 text-white font-semibold hover:bg-red-600 transition"
+                  aria-label="Stop speaking"
+                >
+                  ⏹ Stop
+                </button>
+              )}
+
               <button
                 onClick={startListening}
                 disabled={loading || listening}

@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Python environment
+kokoro-py312/
+__pycache__/
+*.py[cod]
+
+# Build output
+.dist/
+dist/
+
+# Generated audio
+kokoro_api_test.wav
+kokoro_test.wav
+
+# Secrets
+.env
+.env.*
+!.env.example
